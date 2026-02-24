@@ -6,6 +6,8 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const app = express();
+const DB_RETRY_DELAY_MS = 10000;
+let dbReconnectTimer = null;
 
 // Middleware
 app.use(cors());
@@ -15,6 +17,10 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 const connectToDatabase = async () => {
   if (!process.env.MONGODB_URI) {
     throw new Error('MONGODB_URI is missing in backend/.env');
+  }
+
+  if (mongoose.connection.readyState === 1 || mongoose.connection.readyState === 2) {
+    return;
   }
 
   mongoose.set('bufferCommands', false);
@@ -28,12 +34,29 @@ const connectToDatabase = async () => {
   console.log('✓ MongoDB connected');
 };
 
+const scheduleReconnect = () => {
+  if (dbReconnectTimer) {
+    return;
+  }
+
+  dbReconnectTimer = setTimeout(async () => {
+    dbReconnectTimer = null;
+    try {
+      await connectToDatabase();
+    } catch (err) {
+      console.error('MongoDB reconnect failed:', err.message);
+      scheduleReconnect();
+    }
+  }, DB_RETRY_DELAY_MS);
+};
+
 mongoose.connection.on('error', (err) => {
   console.error('MongoDB runtime error:', err.message);
 });
 
 mongoose.connection.on('disconnected', () => {
   console.warn('MongoDB disconnected');
+  scheduleReconnect();
 });
 
 const getDatabaseStatus = () => {
@@ -86,18 +109,18 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server only after MongoDB is ready
+// Start server and keep trying DB until available
 const startServer = async () => {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+
   try {
     await connectToDatabase();
-
-    const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => {
-      console.log(`Server running on http://localhost:${PORT}`);
-    });
   } catch (err) {
-    console.error('Failed to start server:', err.message);
-    process.exit(1);
+    console.error('Initial MongoDB connection failed:', err.message);
+    scheduleReconnect();
   }
 };
 
