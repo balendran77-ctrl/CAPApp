@@ -6,6 +6,7 @@ Node.js/Express REST API with MongoDB Atlas integration.
 - User authentication (JWT)
 - CRUD operations for Critical Action Points (CAPs)
 - Unique CAP ID generation for tracking
+- Email notifications when CAPs are assigned to email addresses
 - User profiles with image support
 - MongoDB Atlas integration
 - CORS enabled for mobile/web clients
@@ -63,3 +64,14 @@ Authorization: Bearer <token>
 
 ## Environment Variables
 See `.env.example` for required variables.
+
+### Optional SMTP setup for CAP assignment emails
+If the `assignee` field contains one or more email addresses (comma-separated), notification emails are sent on CAP create and when assignee emails change during update.
+
+Required SMTP variables:
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_SECURE`
+- `SMTP_USER`
+- `SMTP_PASS`
+- `EMAIL_FROM`

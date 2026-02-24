@@ -1,4 +1,5 @@
 const Item = require('../models/Item');
+const { extractEmails, sendCapAssignmentEmail } = require('../services/emailService');
 
 // Create Critical Action Point (CAP)
 exports.createItem = async (req, res) => {
@@ -21,6 +22,20 @@ exports.createItem = async (req, res) => {
     });
 
     await item.save();
+
+    const assigneeEmails = extractEmails(assignee);
+    if (assigneeEmails.length > 0) {
+      sendCapAssignmentEmail({
+        to: assigneeEmails,
+        capId: item.capId,
+        title: item.title,
+        dueDate: item.dueDate,
+        description: item.description,
+      }).catch((err) => {
+        console.error('Failed to send CAP assignment email:', err.message);
+      });
+    }
+
     res.status(201).json({ message: 'Critical Action Point created', item });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -68,6 +83,8 @@ exports.updateItem = async (req, res) => {
       return res.status(404).json({ error: 'CAP not found' });
     }
 
+    const previousAssignee = item.assignee || '';
+
     // Update basic fields (only update if provided)
     if (title !== undefined && title !== null) item.title = title;
     if (description !== undefined && description !== null) item.description = description;
@@ -106,6 +123,24 @@ exports.updateItem = async (req, res) => {
 
     item.updatedAt = Date.now();
     await item.save();
+
+    if (assignee !== undefined && assignee !== null) {
+      const previousEmails = new Set(extractEmails(previousAssignee));
+      const currentEmails = extractEmails(item.assignee || '');
+      const newlyAssignedEmails = currentEmails.filter((email) => !previousEmails.has(email));
+
+      if (newlyAssignedEmails.length > 0) {
+        sendCapAssignmentEmail({
+          to: newlyAssignedEmails,
+          capId: item.capId,
+          title: item.title,
+          dueDate: item.dueDate,
+          description: item.description,
+        }).catch((err) => {
+          console.error('Failed to send CAP reassignment email:', err.message);
+        });
+      }
+    }
 
     res.json({ message: 'Critical Action Point updated', item });
   } catch (error) {
