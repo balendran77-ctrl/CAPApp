@@ -4,7 +4,10 @@ import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  static const String baseUrl = 'https://capapp-hzwm.onrender.com/api';
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://capapp-hzwm.onrender.com/api',
+  );
   static const String tokenKey = 'jwt_token';
 
   static String? _token;

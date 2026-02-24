@@ -86,8 +86,8 @@ class SplashScreen extends StatelessWidget {
     try {
       final health = await ApiService.checkServerHealth();
       if (!health) {
-        // Server not available, use cached data or offline mode
-        return true; // Allow to continue for now
+        // Server not available; show login instead of bypassing auth
+        return false;
       }
       // Try to fetch profile - if successful, user is authenticated
       await ApiService.getProfile();

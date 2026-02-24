@@ -1,19 +1,37 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+const normalizeEmail = (value) => (value || '').trim().toLowerCase();
+const normalizeUsername = (value) => (value || '').trim();
+const normalizeIdentifier = (value) => (value || '').trim();
+
 // Register user
 exports.register = async (req, res) => {
   try {
     const { username, email, password, firstName, lastName } = req.body;
+    const normalizedEmail = normalizeEmail(email);
+    const normalizedUsername = normalizeUsername(username);
+
+    if (!normalizedEmail || !normalizedUsername || !password) {
+      return res.status(400).json({ error: 'Username, email, and password are required' });
+    }
 
     // Check if user exists
-    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+    const existingUser = await User.findOne({
+      $or: [{ email: normalizedEmail }, { username: normalizedUsername }],
+    });
     if (existingUser) {
       return res.status(400).json({ error: 'Email or username already exists' });
     }
 
     // Create new user
-    const user = new User({ username, email, password, firstName, lastName });
+    const user = new User({
+      username: normalizedUsername,
+      email: normalizedEmail,
+      password,
+      firstName,
+      lastName,
+    });
     await user.save();
 
     // Generate JWT token
@@ -34,10 +52,22 @@ exports.register = async (req, res) => {
 // Login user
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, username, password } = req.body;
+    const identifier = normalizeIdentifier(email || username);
+    const normalizedEmail = identifier.toLowerCase();
 
-    // Find user by email
-    const user = await User.findOne({ email });
+    if (!identifier || !password) {
+      return res.status(400).json({ error: 'Email/username and password are required' });
+    }
+
+    // Find user by email or username
+    const user = await User.findOne({
+      $or: [
+        { email: normalizedEmail },
+        { username: identifier },
+        { username: normalizedEmail },
+      ],
+    });
     if (!user) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }

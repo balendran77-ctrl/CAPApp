@@ -18,14 +18,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String? _errorMessage;
 
   void _register() async {
-    if (_usernameController.text.isEmpty ||
-        _emailController.text.isEmpty ||
-        _passwordController.text.isEmpty) {
+    final username = _usernameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (username.isEmpty || email.isEmpty || password.isEmpty) {
       setState(() => _errorMessage = 'Please fill in all fields');
       return;
     }
 
-    if (_passwordController.text != _confirmPasswordController.text) {
+    if (password != _confirmPasswordController.text) {
       setState(() => _errorMessage = 'Passwords do not match');
       return;
     }
@@ -37,9 +39,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     try {
       await ApiService.register(
-        _usernameController.text,
-        _emailController.text,
-        _passwordController.text,
+        username,
+        email,
+        password,
       );
 
       if (mounted) {
